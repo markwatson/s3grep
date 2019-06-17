@@ -34,7 +34,6 @@ $ go get github.com/markwatson/s3grep
 ## Usage
 See `s3grep -help`:
 ```
-Usage of C:\Users\me\go\bin\s3grep.exe:
   -match string
         The text to match on.
   -path string
