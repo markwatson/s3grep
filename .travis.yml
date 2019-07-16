@@ -1,4 +1,48 @@
 language: go
+sudo: false
+matrix:
+  include:
+    # "1.x" always refers to the latest Go version, inc. the patch release.
+    # e.g. "1.x" is 1.11 until 1.11.1 is available.
+    - go: 1.x
+      env: LATEST=true
+    - go: 1.7.x
+    - go: 1.8.x
+    - go: 1.9.x
+    - go: 1.10.x
+    - go: 1.11.x
+    - go: tip
+  allow_failures:
+    - go: tip
 
-go:
-  - 1.x
+before_install:
+  # gox simplifies building for multiple architectures
+  - go get github.com/mitchellh/gox
+
+install:
+  - # skip
+
+script:
+  - go get -t -v ./...
+  - diff -u <(echo -n) <(gofmt -d .)
+  - go vet $(go list ./... | grep -v /vendor/)
+  - go test -v -race ./...
+  # Only build binaries from the latest Go release.
+  - if [ "${LATEST}" = "true" ]; then gox -os="linux darwin windows" -arch="amd64" -output="logshare.." -ldflags "-X main.Rev=`git rev-parse --short HEAD`" -verbose ./...; fi
+
+deploy:
+  provider: releases
+  skip_cleanup: true
+  api_key:
+    secure: j2yFtnipjAg4c5P9xRoQGM8422WUM7Rfg3TdZtW3a8zSvdE+MIOexEoOPGhIWx6DJYfhnUPMOrTf8J9KPJv5DhpdfKKhmFSgv4pb4+FdeMuL7VnP9LkfmjOD+ht46fCZ/IBjKQuRBU4J3d97qpn45mU9BoxmGcRRypAv0ZtTDQPpKCBAKLlw71HZlxy5J5LWkFOBn8y0m61y2KHCep2cVSRFQ2idLq1izfMf0jOjcT3EAx5IXjfsg9S9PxUbGGBtR7UO/KdIwBedN9Pv2mb0/GaCeBDkxfTeMSQ/czTHPyy5Ht/sHKNHNoB42BAd0OqCvyefxjBaD49mc1hM7U7kdMmOJlvOg3LGdT8mGkX7uZuWJ8+w08aW2s61ZL+pHmZ0HPN2s3iWAuHCcRddn2ZbdK1rxGxcbh4NI3uzvCyWSb8/UC3yw/QoFjzBKwcH/XjrW7rQL7FUCPcRNNGozKEfFNHsiynXFLYhBrD6Z3ITJDDJKayqpdF9FMTcNEHw9bLS+wf8ojLKiJFGPRSepIjB55FOgEhpqMG9LcJAYb/IFoTnRnQ2I0nJq7ZIYwfA+mNoSdIyLDM/DqilIypkQKmWyWjlvgD85pNNN8GHvY2t8Z8MaDu8y0jqmr2UJPWLNInDgmLRFFlBs9KSsrBDieYxFj5yW+Rrs0cV3Qpbg6/hXQ4=
+  file:
+    # The names of the binaries to output, based on the -output template passed to gox.
+    - logshare.windows.amd64.exe
+    - logshare.darwin.amd64
+    - logshare.linux.amd64
+  on:
+    # What to repository to build
+    repo: username/reponame
+    # Only build binaries for tagged commits
+    tags: true
+    condition: $LATEST = true
