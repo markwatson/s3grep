@@ -43,6 +43,7 @@ See `s3grep -help`:
 ## Planned Work
 
 - Scan paths to search multiple files. Ideally it should detect if the path is a single file or prefix, and in the case of a prefix just scan all matching files.
+- When we start doing a lot of operations, ensure we do them in parallel. Make use of the Cloud!!
 - Handle true regex patterns to find in files. We will have to use some combination of pruning files with S3 queries & then filtering from there to limit data transfers.
 - Consider indexing S3 lists / files so we don't have to re-pull data down each time. 
 - Support files with null bytes. This is currently difficult because of how we hack S3 select to work for our purpose. 
