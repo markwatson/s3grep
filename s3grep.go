@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"net/url"
@@ -11,11 +12,13 @@ import (
 	"strings"
 )
 
+// Print an error message then quit.
 func exitErrorf(msg string, args ...interface{}) {
 	_, _ = fmt.Fprintf(os.Stderr, msg+"\n", args...)
 	os.Exit(1)
 }
 
+// Get the S3 client.
 func getS3() *s3.S3 {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
@@ -25,6 +28,16 @@ func getS3() *s3.S3 {
 	return svc
 }
 
+// Utility to trim off first slash if it exists
+func trimInitialSlash(s string) string {
+	if strings.HasPrefix(s, "/") {
+		return s[1:]
+	} else {
+		return s
+	}
+}
+
+// Parse an S3 path into the bucket and prefix.
 func parseS3Path(path string) (error, string, string) {
 	u, err := url.Parse(path)
 
@@ -33,10 +46,11 @@ func parseS3Path(path string) (error, string, string) {
 	} else if u.Scheme != "s3" {
 		return fmt.Errorf("scheme '%s' is not s3", u.Scheme), "", ""
 	} else {
-		return nil, u.Host, u.Path
+		return nil, u.Host, trimInitialSlash(u.Path)
 	}
 }
 
+// Return the compression type for S3 select based on the object suffix.
 func getCompression(key string) string {
 	if strings.HasSuffix(key, ".gz") {
 		return "GZIP"
@@ -47,6 +61,7 @@ func getCompression(key string) string {
 	}
 }
 
+// Get the parameters to scan an object using S3 select for a static string.
 func scanObjectParams(bucket string, key string, exp string) *s3.SelectObjectContentInput {
 	compression := getCompression(key)
 
@@ -73,13 +88,56 @@ func scanObjectParams(bucket string, key string, exp string) *s3.SelectObjectCon
 	}
 }
 
-func matchS3(svc *s3.S3, bucket string, key string, exp string) error {
+// Check for special case where we have a "folder"
+// TODO: Figure out a less hacky way to detect this - S3 isn't supposed to have a concept of folders...
+func isFolderKey(key string) bool {
+	return strings.HasSuffix(key, "/")
+}
+
+// Iterate over items at an S3 prefix. If the process function returns `false`, then break the loop.
+// This function currently won't return "folder" keys ending in `/`.
+func iterObjects(svc *s3.S3, bucket string, prefix string, process func(key string) bool) error {
+	params := &s3.ListObjectsV2Input{
+		Bucket: aws.String(bucket),
+		Prefix: aws.String(prefix),
+	}
+
+	keepGoing := true
+	err := svc.ListObjectsV2Pages(params,
+		func(page *s3.ListObjectsV2Output, lastPage bool) bool {
+			objects := page.Contents
+			for _, object := range objects {
+				if !isFolderKey(*object.Key) {
+					keepGoing = process(*object.Key)
+					if !keepGoing {
+						break
+					}
+				}
+			}
+			return keepGoing
+		})
+
+	return err
+}
+
+// Given an S3 bucket / key and expression, scan the file and print out all matching lines.
+func matchS3(svc *s3.S3, bucket string, key string, exp string, printKey bool) error {
+	// Special case where we try to scan a "folder"
+	if isFolderKey(key) {
+		return awserr.New(s3.ErrCodeNoSuchKey, "Considering ending in '/' to not be a real key", nil)
+	}
+
 	params := scanObjectParams(bucket, key, exp)
 
 	// Issue S3 Select
 	resp, err := svc.SelectObjectContent(params)
 	if err != nil {
 		return err
+	}
+
+	// TODO print key before each match line
+	if printKey {
+		fmt.Println("=== " + key + " ===")
 	}
 
 	// Loop over results
@@ -97,6 +155,26 @@ func matchS3(svc *s3.S3, bucket string, key string, exp string) error {
 	}
 
 	return nil
+}
+
+// Iterate over all objects under a prefix, and scan them
+func scanAndMatchS3(svc *s3.S3, bucket string, key string, exp string) error {
+	var internalError error = nil
+
+	err := iterObjects(svc, bucket, key, func(objKey string) bool {
+		internalError = matchS3(svc, bucket, objKey, exp, true)
+		if internalError != nil {
+			return false
+		}
+
+		return true
+	})
+
+	if internalError != nil {
+		return internalError
+	} else {
+		return err
+	}
 }
 
 func main() {
@@ -118,8 +196,22 @@ func main() {
 		exitErrorf("Unable to parse path: %v", err)
 	}
 
-	err = matchS3(svc, bucket, key, *match)
+	// Convoluted way of falling back to prefix scanning ahead
+	err = matchS3(svc, bucket, key, *match, false)
 	if err != nil {
-		exitErrorf("Error scanning: %v", err)
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case s3.ErrCodeNoSuchKey:
+				// Let's try again, but this time scanning a prefix first
+				err = scanAndMatchS3(svc, bucket, key, *match)
+				if err != nil {
+					exitErrorf("AWS Client Error listing prefixes and scanning: %v", err)
+				}
+			default:
+				exitErrorf("AWS Client Error scanning: %v", err)
+			}
+		} else {
+			exitErrorf("Generic Error scanning: %v", err)
+		}
 	}
 }
