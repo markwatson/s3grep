@@ -1,4 +1,5 @@
 # s3grep
+[![Build Status](https://travis-ci.org/markwatson/s3grep.svg?branch=master)](https://travis-ci.org/markwatson/s3grep)
 
 `s3grep` is an overly simple command to scan files in S3 for lines matching a
  search query. It hacks S3 Select to find lines in a file that contain a search string. 
