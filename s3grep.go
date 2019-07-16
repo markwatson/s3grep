@@ -37,42 +37,52 @@ func parseS3Path(path string) (error, string, string) {
 	}
 }
 
-func matchS3(svc *s3.S3, bucket string, key string, exp string) error {
-	compression := "NONE"
+func getCompression(key string) string {
 	if strings.HasSuffix(key, ".gz") {
-		compression = "GZIP"
+		return "GZIP"
 	} else if strings.HasSuffix(key, ".bz2") {
-		compression = "BZIP2"
+		return "BZIP2"
+	} else {
+		return "NONE"
 	}
+}
 
-	params := &s3.SelectObjectContentInput{
-		Bucket: aws.String(bucket),
-		Key: aws.String(key),
+func scanObjectParams(bucket string, key string, exp string) *s3.SelectObjectContentInput {
+	compression := getCompression(key)
+
+	return &s3.SelectObjectContentInput{
+		Bucket:         aws.String(bucket),
+		Key:            aws.String(key),
 		ExpressionType: aws.String(s3.ExpressionTypeSql),
-		Expression: aws.String("select * from s3object s where s._1 like '%" + exp + "%'"),
+		Expression:     aws.String("select * from s3object s where s._1 like '%" + exp + "%'"),
 		InputSerialization: &s3.InputSerialization{
 			CSV: &s3.CSVInput{
-				FieldDelimiter: aws.String("\000"),
+				FieldDelimiter:  aws.String("\000"),
 				RecordDelimiter: aws.String("\n"),
-				FileHeaderInfo: aws.String(s3.FileHeaderInfoNone),
+				FileHeaderInfo:  aws.String(s3.FileHeaderInfoNone),
 			},
 			CompressionType: aws.String(compression),
 		},
 		OutputSerialization: &s3.OutputSerialization{
 			CSV: &s3.CSVOutput{
-				QuoteCharacter: aws.String(""),
+				QuoteCharacter:       aws.String(""),
 				QuoteEscapeCharacter: aws.String(""),
-				FieldDelimiter: aws.String(""),
+				FieldDelimiter:       aws.String(""),
 			},
 		},
 	}
+}
 
+func matchS3(svc *s3.S3, bucket string, key string, exp string) error {
+	params := scanObjectParams(bucket, key, exp)
+
+	// Issue S3 Select
 	resp, err := svc.SelectObjectContent(params)
 	if err != nil {
 		return err
 	}
-	defer resp.EventStream.Close()
 
+	// Loop over results
 	for event := range resp.EventStream.Events() {
 		switch v := event.(type) {
 		case *s3.RecordsEvent:
@@ -81,7 +91,8 @@ func matchS3(svc *s3.S3, bucket string, key string, exp string) error {
 		}
 	}
 
-	if err := resp.EventStream.Err(); err != nil {
+	// Close and report all errors
+	if err := resp.EventStream.Close(); err != nil {
 		return fmt.Errorf("failed to read from SelectObjectContent EventStream, %v", err)
 	}
 
