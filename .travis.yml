@@ -14,9 +14,9 @@ matrix:
     - go: 1.9.x
     - go: 1.10.x
     - go: 1.11.x
-    - go: tip
-  allow_failures:
-    - go: tip
+#    - go: tip
+#  allow_failures:
+#    - go: tip
 
 before_install:
   # gox simplifies building for multiple architectures
