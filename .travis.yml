@@ -31,18 +31,18 @@ script:
   - go vet $(go list ./... | grep -v /vendor/)
   - go test -v -race ./...
   # Only build binaries from the latest Go release.
-  - if [ "${LATEST}" = "true" ]; then gox -os="linux darwin windows" -arch="amd64" -output="s3grep.." -ldflags "-X main.Rev=`git rev-parse --short HEAD`" -verbose ./...; fi
+  - if [ "${LATEST}" = "true" ]; then gox -os="linux darwin windows" -arch="amd64" -ldflags "-X main.Rev=`git rev-parse --short HEAD`" -verbose ./...; fi
 
 deploy:
   provider: releases
   skip_cleanup: true
-  api_key:
+  api_key:  
     secure: dD1n3KLcEYh8Q7zNSeIvVGtZFsdmjS7pEVWYyl6usiyMsn5f6/q3uSvR9PioN5SgqVXQRXA67g4zw1e1I1W49kQtiFTQSSoulM2TDozMgcq66MNt90GoHo0ZTeuXhzvQRxchdep4ubKo96LlONHEbp/Qiw0toHICiCLz0+XWKJNeSDmwGpeZlCxEvQzApHYdmQ5tysU2mUkaRNddeHC45pAiLpUyqMfdQE0JlhZ3cO92n4VvWtJTVphpqfUflqOf/u7Q1XhuKqbTUe+luqg1NoOJZvktGJALvQPfKXzXxYeXQWwP2BzwSZVwLK6Pk5ERj7kvqZtWT+Go4zqH9SrYqbJ0O4I7NJjAxDMDNhRSjvTHoGTD6nhpdzDvj+tA3CvxyDYWKYinKOBEvHLEI6D56/INCMMcmPkQ1iwMifR6/mZqW3nPE/mGy7lLrxDbMWbMK8sDw3Dm91EzVGHzd282q+sK5P7EFkJ1Hc7QqBH1BfSIutyNPVlLsX9t34dfxdCuzChslZ+jK/i3u4oKtpkTclyk00DIBUvjC8PuFXT+9yb+Xr3GaJEO7Y7mBRbORB76CnH5lQydyQPENQ/f7fFpkk7vtZhMTU4SS5zmMrrfvNj91Xw09P9QYvMizAEnfnZExal17W/6QImxtwNM2nZCf6PJBIPPToDitfx/1hSGbzE=
   file:
     # The names of the binaries to output, based on the -output template passed to gox.
-    - s3grep.windows.amd64.exe
-    - s3grep.darwin.amd64
-    - s3grep.linux.amd64
+    - s3grep_windows_amd64.exe
+    - s3grep_darwin_amd64
+    - s3grep_linux_amd64
   on:
     # What to repository to build
     repo: markwatson/s3grep
