@@ -18,6 +18,11 @@ the cost can be lowered as there will be less bytes scanned.
 
 ## Installation
 
+### From Binary
+On the GitHub releases page, download the latest binary for your platform from the "Assets" dropdown. Rename to
+`s3grep` or `s3grep.exe` (Windows), and add to a folder in your path.
+
+### From Source
 - Install golang: <https://golang.org>
 - Setup a go environment: <https://golang.org/doc/code.html>
 - Use go get to install

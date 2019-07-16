@@ -14,9 +14,9 @@ matrix:
     - go: 1.9.x
     - go: 1.10.x
     - go: 1.11.x
-#    - go: tip
-#  allow_failures:
-#    - go: tip
+    - go: tip
+  allow_failures:
+    - go: tip
 
 before_install:
   # gox simplifies building for multiple architectures
@@ -36,7 +36,7 @@ script:
 deploy:
   provider: releases
   skip_cleanup: true
-  api_key:  
+  api_key:
     secure: dD1n3KLcEYh8Q7zNSeIvVGtZFsdmjS7pEVWYyl6usiyMsn5f6/q3uSvR9PioN5SgqVXQRXA67g4zw1e1I1W49kQtiFTQSSoulM2TDozMgcq66MNt90GoHo0ZTeuXhzvQRxchdep4ubKo96LlONHEbp/Qiw0toHICiCLz0+XWKJNeSDmwGpeZlCxEvQzApHYdmQ5tysU2mUkaRNddeHC45pAiLpUyqMfdQE0JlhZ3cO92n4VvWtJTVphpqfUflqOf/u7Q1XhuKqbTUe+luqg1NoOJZvktGJALvQPfKXzXxYeXQWwP2BzwSZVwLK6Pk5ERj7kvqZtWT+Go4zqH9SrYqbJ0O4I7NJjAxDMDNhRSjvTHoGTD6nhpdzDvj+tA3CvxyDYWKYinKOBEvHLEI6D56/INCMMcmPkQ1iwMifR6/mZqW3nPE/mGy7lLrxDbMWbMK8sDw3Dm91EzVGHzd282q+sK5P7EFkJ1Hc7QqBH1BfSIutyNPVlLsX9t34dfxdCuzChslZ+jK/i3u4oKtpkTclyk00DIBUvjC8PuFXT+9yb+Xr3GaJEO7Y7mBRbORB76CnH5lQydyQPENQ/f7fFpkk7vtZhMTU4SS5zmMrrfvNj91Xw09P9QYvMizAEnfnZExal17W/6QImxtwNM2nZCf6PJBIPPToDitfx/1hSGbzE=
   file:
     # The names of the binaries to output, based on the -output template passed to gox.
